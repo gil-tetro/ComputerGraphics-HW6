@@ -5,8 +5,8 @@ import * as THREE from 'three';
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
 // This defines the initial distance of the camera, you may ignore this as the camera is expected to be dynamic
-camera.applyMatrix4(new THREE.Matrix4().makeTranslation(-5, 3, 110));
-camera.lookAt(0, -4, 1)
+camera.applyMatrix4(new THREE.Matrix4().makeTranslation(0, 10, 110));
+camera.lookAt(0, 0, 0)
 
 
 const renderer = new THREE.WebGLRenderer();
@@ -207,65 +207,84 @@ scene.add(ball);
 
 
 // TODO: Bezier Curves
-const curve = new THREE.QuadraticBezierCurve3(
+const rightCurve = new THREE.QuadraticBezierCurve3(
 	new THREE.Vector3( 0 ,0 ,100 ),
 	new THREE.Vector3( 50, 0, 50 ),
-	new THREE.Vector3( 0, goalHeight / 2, 0 )
+	new THREE.Vector3( 0, 0, -5 )
 );
-const points = curve.getPoints( 50 );
-const geometry = new THREE.BufferGeometry().setFromPoints( points );
+const leftCurve = new THREE.QuadraticBezierCurve3(
+	new THREE.Vector3( 0 ,0 ,100 ),
+	new THREE.Vector3( -50, 0, 50 ),
+	new THREE.Vector3( 0, 0, -5 )
+);
 
-const material = new THREE.LineBasicMaterial( { color: 0xff0000 } );
+const upCurve = new THREE.QuadraticBezierCurve3(
+	new THREE.Vector3( 0 ,0 ,100 ),
+	new THREE.Vector3( 0, 50, 50 ),
+	new THREE.Vector3( 0, 0, -5 )
+);
 
-// Create the final object to add to the scene
-const curveObject = new THREE.Line( geometry, material );
-scene.add(curveObject)
+const curves = [
+rightCurve,
+leftCurve,
+upCurve,
+];
+
+const curvePoints = curves.map((curve) => curve.getPoints(50));
+const curveMaterials = [new THREE.LineBasicMaterial({ color: 0xff0000 }), new THREE.LineBasicMaterial({ color: 0x00ff00 }), new THREE.LineBasicMaterial({ color: 0x0000ff })];
+
+curvePoints.forEach((points, index) => {
+const curveGeometry = new THREE.BufferGeometry().setFromPoints(points);
+const curveObject = new THREE.Line(curveGeometry, curveMaterials[index]);
+scene.add(curveObject);
+});
 
 // TODO: Camera Settings
-// Set the camera following the ball here
-// This defines the initial distance of the camera
-const cameraTranslate = new THREE.Matrix4();
-cameraTranslate.makeTranslation(0,0,5);
-camera.applyMatrix4(cameraTranslate)
+camera.position.z = 130;
 
-renderer.render( scene, camera );
+const controls = new OrbitControls(camera, renderer.domElement);
 
-const controls = new OrbitControls( camera, renderer.domElement );
+let currentCurveIndex = 0;
+let t = 0;
+const speed = 0.001;
 
-
-
-// TODO: Add collectible cards with textures
-
-
-
-
-
-// TODO: Add keyboard event
-// We wrote some of the function for you
+// Event Listeners for Keyboard
 const handle_keydown = (e) => {
-	if(e.code == 'ArrowLeft'){
-		// TODO
-	} else if (e.code == 'ArrowRight'){
-		// TODO
-	} else if (e.code == 'ArrowUp'){
-    // TODO
-  }
+if (e.code == 'ArrowLeft') {
+	currentCurveIndex = (currentCurveIndex - 1 + curves.length) % curves.length;
+} else if (e.code == 'ArrowRight') {
+	currentCurveIndex = (currentCurveIndex + 1) % curves.length;
+} else if (e.code == 'ArrowUp') {
+	// Additional logic if needed
 }
+};
+
 document.addEventListener('keydown', handle_keydown);
 
+// // TODO: Add collectible cards with textures
 
 
 function animate() {
+requestAnimationFrame(animate);
 
-	requestAnimationFrame( animate );
+t += speed;
+if (t > 1) t = 0;
 
-	// TODO: Animation for the ball's position
+const point = curves[currentCurveIndex].getPoint(t);
 
+// Compute translation matrix
+const translationMatrix = new THREE.Matrix4();
+translationMatrix.makeTranslation(point.x - ball.position.x, point.y - ball.position.y, point.z - ball.position.z);
 
-	// TODO: Test for card-ball collision
+// Apply translation matrix
+ball.applyMatrix4(translationMatrix);
 
-	
-	renderer.render( scene, camera );
+camera.position.x = ball.position.x;
+camera.position.y = ball.position.y + 20; // Adjust to follow from above
+camera.position.z = ball.position.z + 30;
+camera.lookAt(ball.position);
 
+renderer.render(scene, camera);
 }
+  
 animate()
