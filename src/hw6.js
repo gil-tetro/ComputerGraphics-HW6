@@ -225,9 +225,9 @@ const upCurve = new THREE.QuadraticBezierCurve3(
 );
 
 const curves = [
-rightCurve,
 leftCurve,
 upCurve,
+rightCurve,
 ];
 
 const curvePoints = curves.map((curve) => curve.getPoints(50));
@@ -242,20 +242,18 @@ scene.add(curveObject);
 // TODO: Camera Settings
 camera.position.z = 130;
 
-const controls = new OrbitControls(camera, renderer.domElement);
+const controls = new OrbitControls(camera, renderer.domElement); //deleyte before submit after done debuging
 
-let currentCurveIndex = 0;
+let currentCurveIndex = 1;
 let t = 0;
 const speed = 0.001;
 
 // Event Listeners for Keyboard
 const handle_keydown = (e) => {
-if (e.code == 'ArrowLeft') {
-	currentCurveIndex = (currentCurveIndex - 1 + curves.length) % curves.length;
-} else if (e.code == 'ArrowRight') {
-	currentCurveIndex = (currentCurveIndex + 1) % curves.length;
-} else if (e.code == 'ArrowUp') {
-	// Additional logic if needed
+if (e.code == 'ArrowLeft' & currentCurveIndex > 0) {
+	currentCurveIndex--;
+} else if (e.code == 'ArrowRight' & currentCurveIndex < 2) {
+	currentCurveIndex++;
 }
 };
 
