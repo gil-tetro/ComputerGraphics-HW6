@@ -1,3 +1,4 @@
+import { log } from 'three/examples/jsm/nodes/Nodes.js';
 import {OrbitControls} from './OrbitControls.js'
 import * as THREE from 'three';
 
@@ -259,14 +260,112 @@ if (e.code == 'ArrowLeft' & currentCurveIndex > 0) {
 
 document.addEventListener('keydown', handle_keydown);
 
+// Define the card data structure
+class Card {
+  constructor(curve, t, object3D, type) {
+    this.curve = curve;
+    this.t = t;
+    this.object3D = object3D;
+    this.type = type; // 'red' or 'yellow'
+  }
+}
+
 // // TODO: Add collectible cards with textures
 
+// Array to hold all the cards
+let cards = [];
+
+// Function to create a card
+function createCard(texture, width, height) {
+  const cardGeometry = new THREE.PlaneGeometry(width, height);
+  const cardMaterial = new THREE.MeshPhongMaterial({ map: texture, side: THREE.DoubleSide });
+  return new THREE.Mesh(cardGeometry, cardMaterial);
+}
+
+// Place cards on the curves
+function placeCards() {
+  const cardWidth = 2;
+  const cardHeight = 4;
+
+  curves.forEach((curve) => {
+    for (let i = Math.max(2,(Math.random()*4)); i > 0; i--) { //make sure there are at least 2 cards on each curve, but not more than 4 to keep it sane
+      const t = 0.1 + (0.9 - 0.1) * Math.random(); // Random t value between 0.1 and 0.9 so there wont be cards at the start and end of the curves
+      const point = curve.getPoint(t);
+
+      // Choose a texture randomly and set type
+      const isRed = Math.random() < 0.5;
+      const texture = isRed ? red_texture : yellow_texture;
+      const type = isRed ? 'red' : 'yellow';
+      const cardMesh = createCard(texture, cardWidth, cardHeight);
+
+      cardMesh.position.set(point.x, point.y, point.z);
+      const card = new Card(curve, t, cardMesh, type)
+
+      cards.push(card);
+      scene.add(cardMesh);
+    }
+  });
+  cards.sort((a, b) => a.t - b.t);
+}
+
+placeCards();
+
+let numYellowCards = 0;
+let numRedCards = 0;
+let fairPlayScore = 100;
+
+function checkCollisions() {
+  const ballPosition = ball.position;
+  const collisionThreshold = 1; // Adjust based on ball and card sizes
+
+  cards.forEach(card => {
+    if (card.curve === curves[currentCurveIndex]) {
+      const cardPosition = card.curve.getPoint(card.t);
+      const distance = ballPosition.distanceTo(cardPosition);
+
+      if (distance < collisionThreshold) {
+        if (card.object3D.visible) {
+          card.object3D.visible = false; // Hide the card
+          handleCollision(card); // Handle collision based on card type
+        }
+      }
+    }
+  });
+}
+
+function handleCollision(card) {
+  if (card.type === 'red') {
+    numRedCards += 1;
+  } else if (card.type === 'yellow') {
+    numYellowCards += 1;
+  }
+}
+
+function resetNewGame(){
+  numYellowCards = 0;
+  numRedCards = 0;
+  fairPlayScore = 100;
+  currentCurveIndex = 1;
+  resetCards();
+}
+function resetCards() {
+  cards.forEach(card => {
+      scene.remove(card.object3D);
+  });
+  cards = [];
+  placeCards();
+}
 
 function animate() {
 requestAnimationFrame(animate);
 
 t += speed;
-if (t > 1) t = 0;
+if (t >= 1){
+  t = 0;
+  fairPlayScore = 100 * Math.pow(2, -(numYellowCards + 10 * numRedCards) / 10);
+  alert(`Fair Play Score: ${fairPlayScore}`);
+  resetNewGame();
+} 
 
 const point = curves[currentCurveIndex].getPoint(t);
 
@@ -276,6 +375,8 @@ translationMatrix.makeTranslation(point.x - ball.position.x, point.y - ball.posi
 
 // Apply translation matrix
 ball.applyMatrix4(translationMatrix);
+
+checkCollisions();
 
 camera.position.x = ball.position.x;
 camera.position.y = ball.position.y + 20; // Adjust to follow from above
